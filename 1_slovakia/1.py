@@ -3,7 +3,7 @@ import requests
 import csv
 from scrapy.selector import Selector
 
-
+# TODO: Научится обрабатывать несколько имен в одном блоке
 class SlovakiaParser:
     LIMIT = 100
     companies = 0
