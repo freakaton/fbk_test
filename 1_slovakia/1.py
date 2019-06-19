@@ -1,5 +1,6 @@
 import re
 import csv
+import sys
 import requests
 import time
 from multiprocessing import Pool
@@ -7,7 +8,6 @@ from multiprocessing import Pool
 from scrapy.selector import Selector
 
 
-# TODO: Научится обрабатывать несколько имен в одном блоке
 class SlovakiaParser:
     LIMIT = 50000
     RANGE = 10
@@ -16,6 +16,7 @@ class SlovakiaParser:
     EXCLUDE_DATA = ['Ing.', 'predstavenstva', 'From:']
     RUSSIA = 'Ruská'
     FIELDNAMES = ['company', 'name', 'address']
+    current_id = 0
 
     @classmethod
     def url_generator(cls, from_range: int):
@@ -43,19 +44,21 @@ class SlovakiaParser:
             ret.append([re.sub(r'[",;]', '', company).strip()] + name_address + [is_russian])
         return ret
 
-    def main(self):
-        file = open('slovakia_names.csv', 'w', newline='')
+    def main(self, start_id=0):
+        file = open(f'slovakia_names_{start_id}.csv', 'w', newline='')
         writer = csv.writer(file, delimiter=';', quotechar='"')
-        writer.writerow(self.FIELDNAMES)
 
-        rfile = open('russian_slovakia_names.csv', 'w', newline='')
+        rfile = open(f'russian_slovakia_names_{start_id}.csv', 'w', newline='')
         rwriter = csv.writer(rfile, delimiter=';', quotechar='"')
-        rwriter.writerow(self.FIELDNAMES)
-        file.flush()
-        rfile.flush()
+        if not start_id:
+            writer.writerow(self.FIELDNAMES)
+            rwriter.writerow(self.FIELDNAMES)
+            file.flush()
+            rfile.flush()
 
         pool = Pool(6)
-        for i in range(0, self.LIMIT, self.RANGE):
+        for i in range(start_id, self.LIMIT, self.RANGE):
+            self.current_id = i
             time.sleep(3)
             result = pool.map(self.parse_url, self.url_generator(i))
             print(f'loading pages from {i} to {i+self.RANGE-1}')
@@ -119,5 +122,14 @@ class SlovakiaParser:
         return ret
 
 
-parser = SlovakiaParser()
-parser.main()
+if __name__ == '__main__':
+    parser = SlovakiaParser()
+    if len(sys.argv) > 1 and sys.argv[1] == '--start_from':
+        start_from = int(sys.argv[2])
+    else:
+        start_from = 0
+    while True:
+        try:
+            parser.main(start_from)
+        except:
+            start_from = parser.current_id
