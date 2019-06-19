@@ -3,47 +3,38 @@ import requests
 import csv
 from scrapy.selector import Selector
 
+
 # TODO: Научится обрабатывать несколько имен в одном блоке
 class SlovakiaParser:
-    LIMIT = 30
-    companies = 0
+    LIMIT = 10
     URL = "http://www.orsr.sk/vypis.asp?lan=en&ID={id}&SID={sid}&P=0"
     courts = [3, 2, 4, 9, 8, 6, 7, 5]
-    date_regex = re.compile(r': \d{2}/\d{2}/\d{4}')
+    exclude_data = ['Ing.', 'predstavenstva', 'From:']
+    RUSSIA = 'Ruská'
     FIELDNAMES = ['company', 'name', 'address']
 
     def main(self):
         file = open('slovakia_names.csv', 'w', newline='')
-        writer = csv.DictWriter(file, delimiter=';', fieldnames=self.FIELDNAMES)
+        writer = csv.writer(file, delimiter=';')
+        writer.writerow(self.FIELDNAMES)
         for i in range(self.LIMIT):
             for j in self.courts:
                 url = self.URL.format(id=i, sid=j)
                 print(url)
                 resp = requests.get(url).content.decode('windows-1250')
                 selector = Selector(text=resp)
-                names = []
+                name_addresses = []
                 if not self.is_right_page(selector):
                     continue
-                try:
-                    company = self.parse_business_name(selector)
-                except Exception as e:
-                    print(e)
-                    continue
-                try:
-                    names += self.parse_managment_body(selector)
-                except Exception as e:
-                    print(e)
-                    pass
-                try:
-                    names += self.parse_partners(selector)
-                except Exception as e:
-                    print(e)
-                    pass
-                for name in names:
-                    names = map(lambda n: re.sub(';', '', n), names)
-                    row = dict(zip(self.FIELDNAMES, [company, name[0], name[1]]))
-                    print("Found name: ", row)
-                    writer.writerow(row)
+
+                company = self.parse_business_name(selector)
+                name_addresses += self.parse_management_body(selector)
+                name_addresses += self.parse_partners(selector)
+
+                for name_address in name_addresses:
+                    name_address = [re.sub(r'[",;]', '', n).strip() for n in name_address]
+                    print("Found name: ", name_address)
+                    writer.writerow([company] + name_address)
         file.close()
 
     @classmethod
@@ -61,29 +52,35 @@ class SlovakiaParser:
 
     @classmethod
     def parse_partners(cls, selector: Selector):
-        info = selector.xpath(
-            "//tr[contains(.//td/span/text(), 'Partners')]/td[2]//td[@width='67%']//span/text()").getall()
-        if not info:
-            return []
-        name = info[0].strip() + " " + info[1].strip()
-        address = ""
-        for i in info[2:]:
-            if not cls.date_regex.findall(i):
-                address += " " + i.strip()
-        return [[name, address]]
+        tables = selector.xpath("//tr[contains(.//td/span/text(), 'Partners')]/td[2]/table//td[@width='67%']")
+        ret = []
+        for table in tables:
+            if len(table.xpath('.//a')) > 0:
+                name = table.xpath('.//a/span/text()').getall()
+                name = ' '.join(map(lambda n: n.strip(), name))
+                addr_str = ''
+                address = table.xpath('./span/text()').getall()
+                for addr in address:
+                    if not any(word in addr for word in cls.exclude_data):
+                        addr_str += addr.strip() + ", "
+                ret.append([name, addr_str])
+        return ret
 
     @classmethod
-    def parse_managment_body(cls, selector: Selector):
-        info = selector.xpath(
-            "//tr[contains(.//td/span/text(), 'Management body')]/td[2]//td[@width='67%']//span/text()").getall()
-        if not info:
-            return []
-        name = info[1].strip() + " " + info[2].strip()
-        address = ""
-        for i in info[3:]:
-            if not cls.date_regex.findall(i):
-                address += " " + i.strip()
-        return [[name, address]]
+    def parse_management_body(cls, selector: Selector):
+        tables = selector.xpath("//tr[contains(.//td/span/text(), 'Management body')]/td[2]/table//td[@width='67%']")
+        ret = []
+        for table in tables:
+            if len(table.xpath('.//a')) > 0:
+                name = table.xpath('.//a/span/text()').getall()
+                name = ' '.join(map(lambda n: n.strip(), name))
+                addr_str = ''
+                address = table.xpath('./span/text()').getall()
+                for addr in address:
+                    if not any(word in addr for word in cls.exclude_data):
+                        addr_str += addr.strip() + ", "
+                ret.append([name, addr_str])
+        return ret
 
 
 parser = SlovakiaParser()
