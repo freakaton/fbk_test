@@ -5,16 +5,17 @@ from scrapy.selector import Selector
 
 # TODO: Научится обрабатывать несколько имен в одном блоке
 class SlovakiaParser:
-    LIMIT = 100
+    LIMIT = 30
     companies = 0
     URL = "http://www.orsr.sk/vypis.asp?lan=en&ID={id}&SID={sid}&P=0"
     courts = [3, 2, 4, 9, 8, 6, 7, 5]
     date_regex = re.compile(r': \d{2}/\d{2}/\d{4}')
+    FIELDNAMES = ['company', 'name', 'address']
 
     def main(self):
         file = open('slovakia_names.csv', 'w', newline='')
-        writer = csv.writer(file, delimiter=';')
-        for i in range(100):
+        writer = csv.DictWriter(file, delimiter=';', fieldnames=self.FIELDNAMES)
+        for i in range(self.LIMIT):
             for j in self.courts:
                 url = self.URL.format(id=i, sid=j)
                 print(url)
@@ -39,7 +40,8 @@ class SlovakiaParser:
                     print(e)
                     pass
                 for name in names:
-                    row = [company, name[0], name[1]]
+                    names = map(lambda n: re.sub(';', '', n), names)
+                    row = dict(zip(self.FIELDNAMES, [company, name[0], name[1]]))
                     print("Found name: ", row)
                     writer.writerow(row)
         file.close()
