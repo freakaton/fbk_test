@@ -9,7 +9,7 @@ from scrapy.selector import Selector
 
 # TODO: Научится обрабатывать несколько имен в одном блоке
 class SlovakiaParser:
-    LIMIT = 20
+    LIMIT = 50000
     RANGE = 10
     URL = "http://www.orsr.sk/vypis.asp?lan=en&ID={id}&SID={sid}&P=0"
     COURTS = [3, 2, 4, 9, 8, 6, 7, 5]
@@ -45,28 +45,33 @@ class SlovakiaParser:
 
     def main(self):
         file = open('slovakia_names.csv', 'w', newline='')
-        writer = csv.writer(file, delimiter=';')
+        writer = csv.writer(file, delimiter=';', quotechar='"')
         writer.writerow(self.FIELDNAMES)
 
         rfile = open('russian_slovakia_names.csv', 'w', newline='')
-        rwriter = csv.writer(rfile, delimiter=';')
+        rwriter = csv.writer(rfile, delimiter=';', quotechar='"')
         rwriter.writerow(self.FIELDNAMES)
+        file.flush()
+        rfile.flush()
 
-        pool = Pool(10)
+        pool = Pool(6)
         for i in range(0, self.LIMIT, self.RANGE):
-            if i != 0:
-                time.sleep(5)
+            time.sleep(3)
             result = pool.map(self.parse_url, self.url_generator(i))
             print(f'loading pages from {i} to {i+self.RANGE-1}')
-            import pdb
-            pdb.set_trace()
             for names in result:
                 if len(names):
                     for name in names:
                         if name[-1]:
+                            for _ in range(5):
+                                print('!!!!FOUND RUSSIAN!!!')
                             rwriter.writerow(name[:-1])
                         writer.writerow(name[:-1])
+            file.flush()
+            rfile.flush()
+
         file.close()
+        rfile.close()
 
     @classmethod
     def is_right_page(cls, selector: Selector):
