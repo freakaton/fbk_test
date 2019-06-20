@@ -59,7 +59,6 @@ class SlovakiaParser:
         pool = Pool(6)
         for i in range(start_id, self.LIMIT, self.RANGE):
             self.current_id = i
-            time.sleep(3)
             result = pool.map(self.parse_url, self.url_generator(i))
             print(f'loading pages from {i} to {i+self.RANGE-1}')
             for names in result:
@@ -72,6 +71,7 @@ class SlovakiaParser:
                         writer.writerow(name[:-1])
             file.flush()
             rfile.flush()
+            time.sleep(3)
 
         file.close()
         rfile.close()
@@ -131,5 +131,8 @@ if __name__ == '__main__':
     while True:
         try:
             parser.main(start_from)
+        except KeyboardInterrupt:
+            print("Ended at", parser.current_id)
+            break
         except:
             start_from = parser.current_id
