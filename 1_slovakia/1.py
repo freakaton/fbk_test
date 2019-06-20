@@ -26,7 +26,7 @@ class SlovakiaParser:
 
     def parse_url(self, url: str):
         time.sleep(0.1)
-        resp = requests.get(url, timeout=10).content.decode('windows-1250')
+        resp = requests.get(url, timeout=5).content.decode('windows-1250')
         selector = Selector(text=resp)
         name_addresses = []
         if not self.is_right_page(selector):
@@ -53,8 +53,6 @@ class SlovakiaParser:
         if not start_id:
             writer.writerow(self.FIELDNAMES)
             rwriter.writerow(self.FIELDNAMES)
-            file.flush()
-            rfile.flush()
 
         pool = Pool(6)
         for i in range(start_id, self.LIMIT, self.RANGE):
@@ -65,16 +63,11 @@ class SlovakiaParser:
                 if len(names):
                     for name in names:
                         if name[-1]:
-                            for _ in range(5):
-                                print('!!!!FOUND RUSSIAN!!!')
                             rwriter.writerow(name[:-1])
                         writer.writerow(name[:-1])
             file.flush()
             rfile.flush()
-            time.sleep(3)
-
-        file.close()
-        rfile.close()
+            time.sleep(1.5)
 
     @classmethod
     def is_right_page(cls, selector: Selector):
@@ -133,6 +126,6 @@ if __name__ == '__main__':
             parser.main(start_from)
         except KeyboardInterrupt:
             print("Ended at", parser.current_id)
-            break
+            sys.exit()
         except:
             start_from = parser.current_id
