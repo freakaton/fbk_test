@@ -20,11 +20,23 @@ class SlovakiaParser:
 
     @classmethod
     def url_generator(cls, from_range: int):
+        """
+        Generate URLs of companies
+
+        :param from_range:int: start id
+        :return:
+        """
         for i in range(from_range, from_range + cls.RANGE):
             for j in cls.COURTS:
                 yield cls.URL.format(id=i, sid=j)
 
     def parse_url(self, url: str):
+        """
+        Main method of page parsing
+
+        :param url: URL of Company
+        :return:
+        """
         time.sleep(0.1)
         resp = requests.get(url, timeout=5).content.decode('windows-1250')
         selector = Selector(text=resp)
@@ -71,6 +83,11 @@ class SlovakiaParser:
 
     @classmethod
     def is_right_page(cls, selector: Selector):
+        """
+        Check is this page correctfor parsing
+        :param selector: Selector
+        :return: bool:
+        """
         if selector.xpath("//h3[contains(.//text(), 'Last updating of databases')]"):
             return False
         else:
@@ -78,12 +95,23 @@ class SlovakiaParser:
 
     @classmethod
     def parse_business_name(cls, selector: Selector):
+        """
+        Return Name of company
+        :param selector: Selector:
+        :return: str:
+        """
         name = selector.xpath(
             "//tr[contains(.//span/text(), 'Business name')]/td[2]//td[@width='67%']//span/text()").getall()
         return name[0].strip()
 
     @classmethod
     def parse_partners(cls, selector: Selector):
+        """
+        Parse partners block
+
+        :param selector: Selector
+        :return: [[name of person, Address of person], ..]
+        """
         tables = selector.xpath("//tr[contains(.//td/span/text(), 'Partners')]/td[2]/table//td[@width='67%']")
         ret = []
         for table in tables:
@@ -100,6 +128,12 @@ class SlovakiaParser:
 
     @classmethod
     def parse_management_body(cls, selector: Selector):
+        """
+        Parse Management Body block
+
+        :param selector: Selector
+        :return: [[name of person, Address of person], ..]
+        """
         tables = selector.xpath("//tr[contains(.//td/span/text(), 'Management body')]/td[2]/table//td[@width='67%']")
         ret = []
         for table in tables:
