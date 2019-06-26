@@ -3,8 +3,7 @@ import csv
 import sys
 import requests
 import time
-from multiprocessing import Pool
-
+from concurrent.futures import ThreadPoolExecutor
 from scrapy.selector import Selector
 
 
@@ -60,13 +59,13 @@ class SlovakiaParser:
         file = open(f'slovakia_names_{start_id}.csv', 'w', newline='')
         writer = csv.writer(file, delimiter=';', quotechar='"')
 
-        rfile = open(f'russian_slovakia_names_{start_id}.csv', 'w', newline='')
-        rwriter = csv.writer(rfile, delimiter=';', quotechar='"')
+        ru_file = open(f'russian_slovakia_names_{start_id}.csv', 'w', newline='')
+        ru_writer = csv.writer(ru_file, delimiter=';', quotechar='"')
         if not start_id:
             writer.writerow(self.FIELDNAMES)
-            rwriter.writerow(self.FIELDNAMES)
+            ru_writer.writerow(self.FIELDNAMES)
 
-        pool = Pool(6)
+        pool = ThreadPoolExecutor(max_workers=6)
         for i in range(start_id, self.LIMIT, self.RANGE):
             self.current_id = i
             result = pool.map(self.parse_url, self.url_generator(i))
@@ -75,16 +74,16 @@ class SlovakiaParser:
                 if len(names):
                     for name in names:
                         if name[-1]:
-                            rwriter.writerow(name[:-1])
+                            ru_writer.writerow(name[:-1])
                         writer.writerow(name[:-1])
             file.flush()
-            rfile.flush()
+            ru_file.flush()
             time.sleep(1.5)
 
     @classmethod
     def is_right_page(cls, selector: Selector):
         """
-        Check is this page correctfor parsing
+        Check is this page correct for parsing
         :param selector: Selector
         :return: bool:
         """
@@ -161,5 +160,6 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             print("Ended at", parser.current_id)
             sys.exit()
-        except:
+        except Exception as e:
+            print(e)
             start_from = parser.current_id
